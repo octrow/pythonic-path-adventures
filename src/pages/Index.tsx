@@ -8,6 +8,7 @@ import PlayerInfo from '@/components/PlayerInfo';
 import ChallengePanel from '@/components/ChallengePanel';
 import CharacterInteraction from '@/components/CharacterInteraction';
 import GameIntro from '@/components/GameIntro';
+import ActionButtons from '@/components/ActionButtons';
 
 const GameContent: React.FC = () => {
   const { gameStarted } = useGame();
@@ -27,6 +28,7 @@ const GameContent: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div className="md:col-span-2">
           <GameTerminal />
+          <ActionButtons />
           <CommandInput />
         </div>
         
