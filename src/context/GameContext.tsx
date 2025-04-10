@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useReducer, useState } from "react";
 import { GameAction, GameMessage, GameState, MessageType } from "../types/game";
 import { concepts, locations, spells } from "../data/gameData";
@@ -241,6 +240,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else if (normalizedCommand === 'clear') {
       setMessages([]);
       addMessage("Terminal cleared.", 'system');
+    } else if (normalizedCommand.startsWith('challenge ')) {
+      const challengeId = normalizedCommand.split(' ')[1];
+      startChallenge(challengeId);
+    } else if (normalizedCommand.startsWith('cast ')) {
+      const spellId = normalizedCommand.split(' ')[1];
+      castSpell(spellId);
+    } else if (normalizedCommand.startsWith('talk ')) {
+      const npcId = normalizedCommand.split(' ')[1];
+      talkToNPC(npcId);
     } else {
       addMessage("I don't understand that command. Type 'help' for a list of available commands.", 'system');
     }
@@ -303,6 +311,120 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       location.connections.forEach(conn => {
         addMessage(`- ${conn.direction}: ${conn.description}`, 'narration');
       });
+    }
+  };
+
+  // Handle starting a challenge
+  const startChallenge = (challengeId: string) => {
+    const { challenges } = getCurrentLocation();
+    const challenge = challenges.find(c => c.id === challengeId);
+    
+    if (!challenge) {
+      addMessage(`Challenge ${challengeId} not found in this location.`, 'error');
+      return;
+    }
+    
+    if (state.gameProgress.completedChallenges.includes(challengeId)) {
+      addMessage(`You've already completed the "${challenge.name}" challenge.`, 'system');
+      return;
+    }
+    
+    addMessage(`You begin the "${challenge.name}" challenge:`, 'narration');
+    addMessage(challenge.description, 'narration');
+    
+    if (challenge.type === 'multiple-choice' && challenge.question) {
+      setTimeout(() => {
+        addMessage(challenge.question!, 'system');
+        if (challenge.choices) {
+          challenge.choices.forEach((choice, index) => {
+            addMessage(`${index + 1}. ${choice.text}`, 'system');
+          });
+        }
+        addMessage("Use the challenge panel to select your answer.", 'system');
+      }, 1000);
+    } else if (challenge.type === 'code-completion' && challenge.codeTemplate) {
+      setTimeout(() => {
+        addMessage("Complete the following code:", 'code');
+        addMessage(challenge.codeTemplate, 'code');
+        addMessage("Use the challenge panel to submit your solution.", 'system');
+      }, 1000);
+    } else if (challenge.type === 'command') {
+      setTimeout(() => {
+        addMessage("Enter the appropriate command to solve this challenge.", 'system');
+        if (challenge.hints && challenge.hints.length > 0) {
+          addMessage(`Hint: ${challenge.hints[0]}`, 'system');
+        }
+      }, 1000);
+    }
+  };
+
+  // Handle casting a spell
+  const castSpell = (spellId: string) => {
+    const spell = state.player.inventory.spells.find(s => s.id === spellId);
+    
+    if (!spell) {
+      addMessage("You don't know that spell.", 'error');
+      return;
+    }
+    
+    if (!spell.unlocked) {
+      addMessage("You haven't unlocked that spell yet.", 'error');
+      return;
+    }
+    
+    addMessage(`You cast ${spell.name}!`, 'spell');
+    addMessage(`Effect: ${spell.effect}`, 'spell');
+    addMessage(`Code: ${spell.code}`, 'code');
+    
+    // Check if the spell solves any active challenges
+    const { challenges } = getCurrentLocation();
+    const solvableChallenge = challenges.find(
+      c => c.type === 'command' && c.expectedCommand === `cast ${spellId}`
+    );
+    
+    if (solvableChallenge) {
+      setTimeout(() => {
+        addMessage("The spell worked perfectly!", 'success');
+        
+        // Complete challenge
+        dispatch({ type: 'COMPLETE_CHALLENGE', payload: { challengeId: solvableChallenge.id } });
+        
+        // Grant rewards
+        dispatch({ type: 'GAIN_XP', payload: { amount: solvableChallenge.xpReward } });
+        dispatch({ type: 'GAIN_INSIGHT', payload: { amount: solvableChallenge.insightReward } });
+        
+        // Check for related concept
+        const relatedConcept = concepts.find(c => c.id === solvableChallenge.conceptId);
+        if (relatedConcept && !state.player.inventory.conceptsLearned.includes(relatedConcept.id)) {
+          dispatch({ type: 'LEARN_CONCEPT', payload: { conceptId: relatedConcept.id } });
+          addMessage(`You've gained deeper understanding of: ${relatedConcept.name}`, 'concept');
+        }
+      }, 1500);
+    }
+  };
+
+  // Talk to an NPC
+  const talkToNPC = (npcId: string) => {
+    const { npcs } = getCurrentLocation();
+    const npc = npcs.find(n => n.id === npcId);
+    
+    if (!npc) {
+      addMessage(`There's no one called ${npcId} here.`, 'error');
+      return;
+    }
+    
+    const dialogue = npc.dialogue.find(d => d.id === npc.currentDialogueId);
+    if (dialogue) {
+      addMessage(`${npc.name}: "${dialogue.text}"`, 'narration');
+      
+      if (dialogue.responseOptions && dialogue.responseOptions.length > 0) {
+        setTimeout(() => {
+          addMessage("How do you respond?", 'system');
+          dialogue.responseOptions!.forEach((option, index) => {
+            addMessage(`${index + 1}. ${option.text}`, 'system');
+          });
+        }, 1000);
+      }
     }
   };
 
