@@ -1,11 +1,10 @@
-
 import React from 'react';
 import { useGame } from '@/context/GameContext';
 import { Button } from '@/components/ui/button';
 import { 
   Search, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, 
   Clipboard, User, BookOpen, ScrollText, Wand2,
-  Package, Puzzle, Key, Gift, FileText
+  Package, Puzzle, Key, Gift, FileText, Swords
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -53,7 +52,7 @@ const ActionButtons: React.FC = () => {
           case 'multiple-choice': icon = <FileText className="h-4 w-4" />; break;
           case 'code-completion': icon = <BookOpen className="h-4 w-4" />; break;
           case 'command': icon = <ScrollText className="h-4 w-4" />; break;
-          case 'boss': icon = <Sword className="h-4 w-4" />; break;
+          case 'boss': icon = <Swords className="h-4 w-4" />; break;
           default: icon = <Puzzle className="h-4 w-4" />;
         }
         
